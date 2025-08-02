@@ -42,33 +42,33 @@ cat > "$CONFIG_FILE" << EOF
 {
   "mcpServers": {
     "filesystem": {
-      "command": "node",
-      "args": ["$MCP_DIR/servers/src/filesystem/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
       "env": {
         "FILESYSTEM_ROOT": "/",
         "FILESYSTEM_WATCH_ENABLED": "true"
       }
     },
     "playwright": {
-      "command": "node",
-      "args": ["$MCP_DIR/servers/src/playwright/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
       "env": {}
     },
     "fetch": {
-      "command": "node",
-      "args": ["$MCP_DIR/servers/src/fetch/dist/index.js"],
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
       "env": {
         "FETCH_USER_AGENT": "Mozilla/5.0 (compatible; ClaudeCodeMCP/1.0)"
       }
     },
     "memory": {
-      "command": "node",
-      "args": ["$MCP_DIR/servers/src/memory/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {}
     },
     "thinking": {
-      "command": "node",
-      "args": ["$MCP_DIR/servers/src/sequentialthinking/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "env": {}
     }
   }
@@ -78,22 +78,28 @@ EOF
 echo -e "${GREEN}✓ Configuration created successfully${NC}"
 echo "  Location: $CONFIG_FILE"
 
-# Verify MCP installations
+# Verify tool installations
 echo ""
-echo "Verifying MCP installations:"
-check_mcp() {
-    if [ -f "$1" ]; then
-        echo -e "  $2: ${GREEN}✓${NC}"
+echo "Verifying required tools:"
+check_tool() {
+    if command -v "$1" > /dev/null 2>&1; then
+        echo -e "  $1: ${GREEN}✓${NC}"
     else
-        echo -e "  $2: ${RED}✗ Not found${NC}"
+        echo -e "  $1: ${RED}✗ Not found${NC}"
+        echo "    Please install $1 to use $2 MCP server"
     fi
 }
 
-check_mcp "$MCP_DIR/servers/src/filesystem/dist/index.js" "filesystem"
-check_mcp "$MCP_DIR/servers/src/playwright/dist/index.js" "playwright"
-check_mcp "$MCP_DIR/servers/src/fetch/dist/index.js" "fetch"
-check_mcp "$MCP_DIR/servers/src/memory/dist/index.js" "memory"
-check_mcp "$MCP_DIR/servers/src/sequentialthinking/dist/index.js" "thinking"
+check_tool "npx" "filesystem, playwright, memory, thinking"
+check_tool "uvx" "fetch"
+
+echo ""
+echo "MCP servers to be used:"
+echo "  - filesystem: @modelcontextprotocol/server-filesystem"
+echo "  - playwright: @playwright/mcp@latest"
+echo "  - fetch: mcp-server-fetch (Python)"
+echo "  - memory: @modelcontextprotocol/server-memory"
+echo "  - thinking: @modelcontextprotocol/server-sequential-thinking"
 
 # Check if Claude Code is running
 echo ""

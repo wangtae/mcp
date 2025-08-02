@@ -39,6 +39,18 @@ fi
 
 echo -e "${GREEN}✓ Node.js $(node -v) detected${NC}"
 
+# Check for Python and uv/uvx for Python-based servers
+if command -v uvx &> /dev/null; then
+    echo -e "${GREEN}✓ uvx detected (for Python MCP servers)${NC}"
+elif command -v python3 &> /dev/null || command -v python &> /dev/null; then
+    echo -e "${YELLOW}⚠ Python detected but uvx not found${NC}"
+    echo "  Consider installing uv for easier Python MCP server management:"
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
+else
+    echo -e "${YELLOW}⚠ Python not detected${NC}"
+    echo "  Some MCP servers (fetch, git) require Python"
+fi
+
 # Check git
 if ! command -v git &> /dev/null; then
     echo -e "${RED}Error: Git is not installed${NC}"
@@ -62,37 +74,40 @@ else
     cd servers
 fi
 
-# Build each official MCP server
+# Build TypeScript/JavaScript MCP servers
 echo ""
-echo "Building MCP servers..."
+echo "Building TypeScript/JavaScript MCP servers..."
 
-MCP_SERVERS=(
+TS_SERVERS=(
     "filesystem"
-    "fetch"
     "memory"
     "sequentialthinking"
-    "git"
     "everything"
 )
 
-for server in "${MCP_SERVERS[@]}"; do
+for server in "${TS_SERVERS[@]}"; do
     if [ -d "src/$server" ]; then
         echo ""
         echo -e "${YELLOW}Building $server MCP...${NC}"
         cd "src/$server"
         
-        # Install dependencies
-        echo "Installing dependencies..."
-        npm install --silent
-        
-        # Build
-        echo "Building..."
-        npm run build
-        
-        if [ -f "dist/index.js" ]; then
-            echo -e "${GREEN}✓ $server MCP built successfully${NC}"
+        # Check if package.json exists
+        if [ -f "package.json" ]; then
+            # Install dependencies
+            echo "Installing dependencies..."
+            npm install --silent
+            
+            # Build
+            echo "Building..."
+            npm run build
+            
+            if [ -f "dist/index.js" ]; then
+                echo -e "${GREEN}✓ $server MCP built successfully${NC}"
+            else
+                echo -e "${RED}✗ Failed to build $server MCP${NC}"
+            fi
         else
-            echo -e "${RED}✗ Failed to build $server MCP${NC}"
+            echo -e "${YELLOW}⚠ $server is not a Node.js project, skipping build${NC}"
         fi
         
         cd ../..
@@ -100,6 +115,13 @@ for server in "${MCP_SERVERS[@]}"; do
         echo -e "${YELLOW}⚠ $server directory not found, skipping${NC}"
     fi
 done
+
+# Note about Python servers
+echo ""
+echo -e "${YELLOW}Python-based MCP servers:${NC}"
+echo "  • fetch - Install with: pip install mcp-server-fetch"
+echo "  • git   - Install with: pip install mcp-server-git"
+echo "  These servers don't need building and can be run with uvx or python -m"
 
 # All servers are now built, check for sequential thinking
 echo ""
@@ -127,9 +149,9 @@ echo "Updating MCP servers..."
 cd "$MCP_DIR/servers"
 git pull origin main
 
-# Rebuild all
-for server in filesystem playwright fetch memory mysql postgresql; do
-    if [ -d "src/$server" ]; then
+# Rebuild TypeScript servers only
+for server in filesystem memory sequentialthinking everything; do
+    if [ -d "src/$server" ] && [ -f "src/$server/package.json" ]; then
         echo "Rebuilding $server..."
         cd "src/$server"
         npm install
@@ -138,11 +160,9 @@ for server in filesystem playwright fetch memory mysql postgresql; do
     fi
 done
 
-# Update Sequential Thinking
-cd "$MCP_DIR/mcp-server-sequential-thinking"
-git pull origin main
-npm install
-npm run build
+echo ""
+echo "Note: Python servers (fetch, git) and npx-based servers (playwright)"
+echo "are automatically updated when run."
 
 echo "✓ All MCP servers updated"
 EOF
@@ -165,8 +185,7 @@ tar -czf "$BACKUP_DIR/mcp-backup-$DATE.tar.gz" \
     --exclude="*/node_modules" \
     --exclude="*/.git" \
     -C "$HOME/infrastructure" \
-    mcp/servers \
-    mcp/mcp-server-sequential-thinking
+    mcp/servers
 
 echo "✓ Backup created: $BACKUP_DIR/mcp-backup-$DATE.tar.gz"
 
@@ -186,13 +205,12 @@ echo ""
 echo "MCP servers installed to: $MCP_DIR"
 echo ""
 echo "Available servers:"
-echo "  • filesystem - File system access"
-echo "  • playwright - Browser automation"
-echo "  • fetch     - Web content fetching"
-echo "  • memory    - Knowledge graph storage"
-echo "  • thinking  - Sequential problem solving"
-echo "  • mysql     - MySQL database access"
-echo "  • postgresql - PostgreSQL database access"
+echo "  • filesystem - File system access (TypeScript)"
+echo "  • playwright - Browser automation (install via npx @playwright/mcp)"
+echo "  • fetch     - Web content fetching (Python - use uvx mcp-server-fetch)"
+echo "  • memory    - Knowledge graph storage (TypeScript)"
+echo "  • thinking  - Sequential problem solving (TypeScript)"
+echo "  • git       - Git repository access (Python - use uvx mcp-server-git)"
 echo ""
 echo "Helper scripts created in: $SCRIPTS_DIR"
 echo "  • update-mcp.sh - Update all MCP servers"
